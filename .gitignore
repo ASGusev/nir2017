@@ -1,0 +1,6 @@
+*.mgf
+*.msalign
+*.hk
+.gradle/
+.idea/
+build
