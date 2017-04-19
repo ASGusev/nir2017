@@ -83,8 +83,10 @@ public enum DeconvolutionProgram {
                             }
                         }
                     } catch (IOException e) {
-                        scan = null;
-                        line = null;
+                        try {
+                            resultsReader.close();
+                        } catch (IOException e1) {}
+                        throw new ScanReadError(e);
                     }
                     if (line == null) {
                         try {
@@ -172,14 +174,15 @@ public enum DeconvolutionProgram {
                             }
                         }
                     } catch (IOException e) {
-                        scan = null;
-                        line = null;
+                        try {
+                            resultsReader.close();
+                        } catch (IOException e1) {}
+                        throw new ScanReadError(e);
                     }
                     if (line == null) {
                         try {
                             resultsReader.close();
-                        } catch (IOException e) {
-                        }
+                        } catch (IOException e) {}
                     }
                     return scan;
                 }
@@ -190,10 +193,59 @@ public enum DeconvolutionProgram {
     Hardklor {
         @Override
         public Iterator<ExperimentalScan> getOutputIterator(Path filePath) throws IOException {
-            throw new UnsupportedOperationException();
+            return new Iterator<ExperimentalScan>() {
+                private String nextLine;
+                private BufferedReader scansReader;
+
+                {
+                    scansReader = Files.newBufferedReader(filePath);
+                    nextLine = scansReader.readLine();
+                }
+
+                @Override
+                public boolean hasNext() {
+                    return nextLine != null;
+                }
+
+                @Override
+                public ExperimentalScan next() {
+                    String[] tokens = nextLine.split("\t");
+                    int scanNumber = Integer.valueOf(tokens[1]);
+                    double mass = Double.valueOf(tokens[4]);
+                    int charge = Integer.valueOf(tokens[5]);
+                    List<Double> peaksList = new ArrayList<>();
+
+                    try {
+                        nextLine = scansReader.readLine();
+                        while (nextLine != null && nextLine.charAt(0) == 'P') {
+                            tokens = nextLine.split("\t");
+                            peaksList.add(Double.valueOf(tokens[1]));
+                            nextLine = scansReader.readLine();
+                        }
+                    } catch (IOException e) {
+                        throw new ScanReadError(e);
+                    }
+
+                    double[] peaks = new double[peaksList.size()];
+                    for (int i = 0; i < peaks.length; i++) {
+                        peaks[i] = peaksList.get(i);
+                    }
+                    return new ExperimentalScan(scanNumber, 0, charge, mass, peaks);
+                }
+            };
         }
     };
 
     public abstract Iterator<ExperimentalScan> getOutputIterator(Path filePath)
             throws IOException;
+
+    public static class ScanReadError extends Error {
+        ScanReadError() {
+            super();
+        }
+
+        ScanReadError(Throwable cause) {
+            super(cause);
+        }
+    }
 }
