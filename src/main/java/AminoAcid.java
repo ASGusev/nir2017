@@ -22,6 +22,7 @@ public enum AminoAcid {
 
     private final Character letterCode;
     private final double mass;
+    private static double[] masses;
 
     AminoAcid(Character letterCode, double mass) {
         this.letterCode = letterCode;
@@ -36,12 +37,13 @@ public enum AminoAcid {
         return mass;
     }
 
-    public static AminoAcid[] sequenceFromString(String stringSequence) {
-        AminoAcid[] sequence = new AminoAcid[stringSequence.length()];
-        System.out.println(stringSequence);
-        for (int i = 0; i < stringSequence.length(); i++) {
-            sequence[i] = AminoAcid.valueOf(stringSequence.substring(i, i + 1));
+    public static double[] getMasses() {
+        if (masses == null) {
+            masses = new double[26];
+            for (AminoAcid acid: AminoAcid.values()) {
+                masses[acid.getLetterCode() - 'A'] = acid.getMass();
+            }
         }
-        return sequence;
+        return masses;
     }
 }

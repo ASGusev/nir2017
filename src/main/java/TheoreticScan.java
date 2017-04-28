@@ -1,17 +1,14 @@
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class TheoreticScan extends Scan {
-    private final double DELTA_Y = 18.01528;
 
     private AminoAcid[] sequence;
-    private double[] ionsB;
-    private double[] ionsY;
-    private int length;
+    private Ion[] ions;
     private double eValue;
     private String stringSequence;
 
@@ -38,20 +35,15 @@ public class TheoreticScan extends Scan {
         */
     }
 
+    public Ion[] getIons() {
+        if (ions == null) {
+            makeIons();
+        }
+        return ions;
+    }
+
     public double getEValue() {
         return eValue;
-    }
-
-    public int getLength() {
-        return length;
-    }
-
-    public double[] getIonsB() {
-        return ionsB;
-    }
-
-    public double[] getIonsY() {
-        return ionsY;
     }
 
     public AminoAcid[] getSequence() {
@@ -73,6 +65,40 @@ public class TheoreticScan extends Scan {
         return readTable(tablePath).collect(Collectors.toMap(Scan::getId, scan -> scan));
     }
 
+    public static class Ion {
+        private final char type;
+        private final int number;
+        private final double value;
+
+        public Ion(char type, int number, double value) {
+            this.type = type;
+            this.number = number;
+            this.value = value;
+        }
+
+        public char getType() {
+            return type;
+        }
+
+        public int getNumber() {
+            return number;
+        }
+
+        public double getValue() {
+            return value;
+        }
+
+        public static Comparator<Ion> MASS_ASCENDING_ORDER = (Ion ion1, Ion ion2) -> {
+            if (ion1.value < ion2.value) {
+                return -1;
+            }
+            if (ion1.value == ion2.value) {
+                return 0;
+            }
+            return 1;
+        };
+    }
+
     private static TheoreticScan parseTableLine(String line) {
         String[] data = line.split("\t");
         Integer id  = Integer.valueOf(data[2]);
@@ -82,21 +108,73 @@ public class TheoreticScan extends Scan {
         double eValue = Double.valueOf(data[18]);
 
         String sequenceStr = data[13];
-        /*
-        if (sequenceStr.length() > 3 && sequenceStr.lastIndexOf(".") ==
-                sequenceStr.length() - 2) {
-            sequenceStr = sequenceStr.substring(0, sequenceStr.lastIndexOf("."));
-        }
-        if (sequenceStr.contains(".")) {
-            sequenceStr = sequenceStr.substring(sequenceStr.indexOf("."));
-        }
-        if (sequenceStr.contains("]")) {
-            sequenceStr = sequenceStr.substring(sequenceStr.indexOf(']') + 1);
-        }
-        */
+        sequenceStr = sequenceStr.substring(sequenceStr.indexOf(".") + 1,
+                sequenceStr.lastIndexOf("."));
 
 
         return new TheoreticScan(id, prsmId, charge, precursorMass, eValue,
                 sequenceStr);
+    }
+
+    private void makeSequence() {
+        List<AminoAcid> aminoSequence = new ArrayList<>();
+        for (char c: stringSequence.toCharArray()) {
+            if (Character.isLetter(c)) {
+                aminoSequence.add(AminoAcid.valueOf(String.valueOf(c)));
+            }
+        }
+        sequence = new AminoAcid[aminoSequence.size()];
+        for (int i = 0; i < sequence.length; i++) {
+            sequence[i] = aminoSequence.get(i);
+        }
+    }
+
+    private void makeIons() {
+        final double DELTA_Y = 18.01528;
+        int pos = 0;
+        double prefMass = 0.0;
+        boolean modified = false;
+        double[] acidMasses = AminoAcid.getMasses();
+        List<Ion> ionsBList = new ArrayList<>();
+        List<Ion> ionsYList = new ArrayList<>();
+        while (pos < stringSequence.length() - 1) {
+            if (Character.isLetter(stringSequence.charAt(pos))) {
+                prefMass += acidMasses[stringSequence.charAt(pos) - 'A'];
+                if (!modified) {
+                    ionsBList.add(new Ion('B', ionsBList.size() + 1, prefMass));
+                }
+            } else {
+                switch (stringSequence.charAt(pos)) {
+                    case '(': {
+                        modified = true;
+                        break;
+                    } case ')': {
+                        pos += 2;
+                        int closingPos = stringSequence.indexOf(']', pos);
+                        prefMass += Double.valueOf(stringSequence.substring(pos, closingPos));
+                        pos = closingPos + 1;
+                        modified = false;
+                        break;
+                    }
+                }
+            }
+        }
+        double totalMass = prefMass;
+        if (Character.isLetter(stringSequence.charAt(stringSequence.length() - 1))) {
+            totalMass += acidMasses[
+                    stringSequence.charAt(stringSequence.length() - 1) - 'A'];
+        }
+        for (Ion ionB: ionsBList) {
+            ionsYList.add(new Ion('Y', ionB.getNumber(),
+                    totalMass - ionB.getValue() + DELTA_Y));
+        }
+        ions = new Ion[ionsBList.size() * 2];
+        for (int i = 0; i < ionsBList.size(); i++) {
+            ions[i] = ionsBList.get(i);
+        }
+        for (int i = 0; i < ionsYList.size(); i++) {
+            ions[i + ionsBList.size()] = ionsYList.get(i);
+        }
+        Arrays.sort(ions, Ion.MASS_ASCENDING_ORDER);
     }
 }
