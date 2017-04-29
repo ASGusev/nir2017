@@ -13,8 +13,11 @@ public class Analyzer {
         final String BEGIN_PRISM = "BEGIN PRISM\n";
         final String END_PRISM = "END PRISM\n";
         final String SPECTRUM_ID_PREF = "SPECTRUM_ID=";
-        final String BEGIN_MATCH_PAIR = "BEGIN_MATCH_PAIR\n";
+        final String BEGIN_MATCH_PAIR = "BEGIN MATCH_PAIR\n";
         final String END_MATCH_PAIR = "END MATCH_PAIR\n";
+        final String BEGIN_MASS_SHIFT = "BEGIN MASS_SHIFT\n";
+        final String END_MASS_SHIFT = "END MASS_SHIFT\n";
+        final String UNMATCHED_PEAKS_TEMPLATE = "UNMATCHED_PEAKS=%d\n";
 
         BufferedWriter annotationWriter = Files.newBufferedWriter(outputPath);
 
@@ -29,9 +32,22 @@ public class Analyzer {
                     annotationWriter.write(BEGIN_PRISM);
                     annotationWriter.write(SPECTRUM_ID_PREF +
                             String.valueOf(scan.getId()) + '\n');
+
+                    annotationWriter.write(BEGIN_MASS_SHIFT);
+                    List<TheoreticScan.MassShift> modifications =
+                            theoreticScan.getModifications();
+                    for (int i = 0; i < modifications.size(); i++) {
+                        annotationWriter.write(String.format("%-3d %-3d %-3d %f\n",
+                                i, modifications.get(i).getStart(),
+                                modifications.get(i).getEnd(),
+                                modifications.get(i).getMass()));
+                    }
+                    annotationWriter.write(END_MASS_SHIFT);
+
                     annotationWriter.write(BEGIN_MATCH_PAIR);
                     TheoreticScan.Ion[] theoreticIons = theoreticScan.getIons();
                     List<IonMatch> matches = new ArrayList<>();
+                    int unmatchedPeaks = 0;
                     for (double peak : scan.getPeaks()) {
                         double eps = peak * precision;
                         double minMass = peak - eps;
@@ -46,11 +62,16 @@ public class Analyzer {
                             }
                         }
                         int pos = right;
+                        boolean matched = false;
                         while (pos < theoreticIons.length &&
                                 theoreticIons[pos].getMass() > peak - eps &&
                                 theoreticIons[pos].getMass() < peak + eps) {
                             matches.add(new IonMatch(theoreticIons[pos], peak));
                             pos++;
+                            matched = true;
+                        }
+                        if (!matched) {
+                            unmatchedPeaks++;
                         }
                     }
                     matches.sort(IonMatch.MASS_ASCENDING_ORDER);
@@ -59,16 +80,18 @@ public class Analyzer {
                                 matches.get(i).toString()));
                     }
                     annotationWriter.write(END_MATCH_PAIR);
+
+                    annotationWriter.write(String.format(UNMATCHED_PEAKS_TEMPLATE,
+                            unmatchedPeaks));
+
                     annotationWriter.write(END_PRISM);
                     annotationWriter.write("\n");
                 } catch (IOException e) {
-                    Error error = new Error();
-                    error.addSuppressed(e);
-                    throw error;
+                    throw new Error(e);
                 }
             });
         } catch (Error e) {
-            throw (IOException)e.getSuppressed()[0];
+            throw (IOException)e.getCause();
         }
 
         annotationWriter.close();

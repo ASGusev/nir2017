@@ -6,11 +6,11 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class TheoreticScan extends Scan {
-
     private AminoAcid[] sequence;
     private Ion[] ions;
     private double eValue;
     private String stringSequence;
+    private List<MassShift> modifications;
 
     public TheoreticScan(int id, int prsmId, int charge, double precursorMass,
                          double eValue, String stringSequence) {
@@ -49,6 +49,30 @@ public class TheoreticScan extends Scan {
         return readTable(tablePath).collect(Collectors.toMap(Scan::getId, scan -> scan));
     }
 
+    public List<MassShift> getModifications() {
+        if (modifications == null) {
+            modifications = new ArrayList<>();
+            int acids = 0;
+            int start = 0, end = 0;
+            double mass = 0;
+            for (int pos = 0; pos < stringSequence.length(); pos++) {
+                if (stringSequence.charAt(pos) == '(') {
+                    start = acids;
+                } else if (stringSequence.charAt(pos) == ')') {
+                    end = acids + 1;
+                    pos += 2;
+                    int massEndIndex = stringSequence.indexOf(']', pos);
+                    mass = Double.valueOf(stringSequence.substring(pos, massEndIndex));
+                    modifications.add(new MassShift(start, end, mass));
+                    pos = massEndIndex;
+                } else {
+                    acids++;
+                }
+            }
+        }
+        return modifications;
+    }
+
     public static class Ion {
         private final char type;
         private final int number;
@@ -81,6 +105,30 @@ public class TheoreticScan extends Scan {
             }
             return 1;
         };
+    }
+
+    public class MassShift {
+        private final int start;
+        private final int end;
+        private final double mass;
+
+        public MassShift(int start, int end, double mass) {
+            this.start = start;
+            this.end = end;
+            this.mass = mass;
+        }
+
+        public int getStart() {
+            return start;
+        }
+
+        public int getEnd() {
+            return end;
+        }
+
+        public double getMass() {
+            return mass;
+        }
     }
 
     private static TheoreticScan parseTableLine(String line) {
