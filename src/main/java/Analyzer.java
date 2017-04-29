@@ -10,13 +10,12 @@ public class Analyzer {
                                 Path outputPath) throws IOException {
         final double maxEValue = 1e-10;
         final double precision = 1e-5;
-        final String BEGIN_PRISM = "BEGIN PRISM\n";
-        final String END_PRISM = "END PRISM\n";
-        final String SPECTRUM_ID_PREF = "SPECTRUM_ID=";
-        final String BEGIN_MATCH_PAIR = "BEGIN MATCH_PAIR\n";
-        final String END_MATCH_PAIR = "END MATCH_PAIR\n";
-        final String BEGIN_MASS_SHIFT = "BEGIN MASS_SHIFT\n";
-        final String END_MASS_SHIFT = "END MASS_SHIFT\n";
+        final String BEGIN = "BEGIN ";
+        final String END = "END ";
+        final String PRISM = "PRISM";
+        final String MATCH_PAIR = "MATCH_PAIR";
+        final String MASS_SHIFT = "MASS_SHIFT";
+        final String SPECTRUM_ID_PREF = "SPECTRUM_ID=%d\n";
         final String UNMATCHED_PEAKS_TEMPLATE = "UNMATCHED_PEAKS=%d\n";
 
         BufferedWriter annotationWriter = Files.newBufferedWriter(outputPath);
@@ -29,11 +28,11 @@ public class Analyzer {
                 }
 
                 try {
-                    annotationWriter.write(BEGIN_PRISM);
-                    annotationWriter.write(SPECTRUM_ID_PREF +
-                            String.valueOf(scan.getId()) + '\n');
+                    annotationWriter.write(BEGIN + PRISM + "\n");
+                    annotationWriter.write(String.format(SPECTRUM_ID_PREF,
+                            scan.getId()));
 
-                    annotationWriter.write(BEGIN_MASS_SHIFT);
+                    annotationWriter.write(BEGIN + MASS_SHIFT + "\n");
                     List<TheoreticScan.MassShift> modifications =
                             theoreticScan.getModifications();
                     for (int i = 0; i < modifications.size(); i++) {
@@ -42,9 +41,9 @@ public class Analyzer {
                                 modifications.get(i).getEnd(),
                                 modifications.get(i).getMass()));
                     }
-                    annotationWriter.write(END_MASS_SHIFT);
+                    annotationWriter.write(END + MASS_SHIFT + "\n");
 
-                    annotationWriter.write(BEGIN_MATCH_PAIR);
+                    annotationWriter.write(BEGIN + MATCH_PAIR + "\n");
                     TheoreticScan.Ion[] theoreticIons = theoreticScan.getIons();
                     List<IonMatch> matches = new ArrayList<>();
                     int unmatchedPeaks = 0;
@@ -79,12 +78,12 @@ public class Analyzer {
                         annotationWriter.write(String.format("%-3d %s\n", i,
                                 matches.get(i).toString()));
                     }
-                    annotationWriter.write(END_MATCH_PAIR);
+                    annotationWriter.write(END + MATCH_PAIR + "\n");
 
                     annotationWriter.write(String.format(UNMATCHED_PEAKS_TEMPLATE,
                             unmatchedPeaks));
 
-                    annotationWriter.write(END_PRISM);
+                    annotationWriter.write(END + PRISM + "\n");
                     annotationWriter.write("\n");
                 } catch (IOException e) {
                     throw new Error(e);

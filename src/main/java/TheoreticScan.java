@@ -186,7 +186,7 @@ public class TheoreticScan extends Scan {
                         pos += 2;
                         int closingPos = stringSequence.indexOf(']', pos);
                         prefMass += Double.valueOf(stringSequence.substring(pos, closingPos));
-                        pos = closingPos + 1;
+                        pos = closingPos;
                         modified = false;
                         ionsBList.add(new Ion('B', acidsNumber, prefMass));
                         break;
