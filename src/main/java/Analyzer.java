@@ -5,17 +5,18 @@ import java.nio.file.Path;
 import java.util.*;
 
 public class Analyzer {
+    final static String BEGIN = "BEGIN ";
+    final static String END = "END ";
+    final static String PRISM = "PRISM";
+    final static String SPECTRUM_ID_PREF = "SPECTRUM_ID=%d\n";
+
     public static void annotate(Iterator<ExperimentalScan> experimentalScans,
                                 Map<Integer, TheoreticScan> theoreticScans,
                                 Path outputPath) throws IOException {
         final double maxEValue = 1e-10;
         final double precision = 1e-5;
-        final String BEGIN = "BEGIN ";
-        final String END = "END ";
-        final String PRISM = "PRISM";
         final String MATCH_PAIR = "MATCH_PAIR";
         final String MASS_SHIFT = "MASS_SHIFT";
-        final String SPECTRUM_ID_PREF = "SPECTRUM_ID=%d\n";
         final String UNMATCHED_PEAKS_TEMPLATE = "UNMATCHED_PEAKS=%d\n";
 
         BufferedWriter annotationWriter = Files.newBufferedWriter(outputPath);
@@ -94,6 +95,59 @@ public class Analyzer {
         }
 
         annotationWriter.close();
+    }
+
+    public static void search(Path table, Path outputPath, ScanStream... streams)
+            throws IOException {
+        Map<DeconvolutionProgram, Set<Integer>> programSets = new HashMap<>();
+        for (ScanStream stream: streams) {
+            Set<Integer> scans = programSets.computeIfAbsent(stream.getProgram(),
+                    program -> new HashSet<>());
+            stream.getScans().forEachRemaining(scan -> scans.add(scan.getId()));
+        }
+
+        try (BufferedWriter resWriter = Files.newBufferedWriter(outputPath)) {
+            TheoreticScan.readTable(table).forEach(theoreticScan -> {
+                try {
+                    resWriter.write(BEGIN + PRISM + '\n');
+                    resWriter.write(String.format(SPECTRUM_ID_PREF,
+                            theoreticScan.getId()));
+                    List<DeconvolutionProgram> finderPrograms = new ArrayList<>();
+                    programSets.forEach((program, scansSet) -> {
+                        if (scansSet.contains(theoreticScan.getId())) {
+                            finderPrograms.add(program);
+                        }
+                    });
+                    for (DeconvolutionProgram program: finderPrograms) {
+                        resWriter.write(program.toString() + '\n');
+                    }
+                    resWriter.write(END + PRISM + '\n');
+                    resWriter.write('\n');
+                } catch (IOException e) {
+                    throw new Error(e);
+                }
+            });
+        } catch (Error e) {
+            throw (IOException) e.getCause();
+        }
+    }
+
+    public static class ScanStream {
+        private final DeconvolutionProgram program;
+        private final Iterator<ExperimentalScan> scans;
+
+        public ScanStream(DeconvolutionProgram program, Path file) throws IOException {
+            this.program = program;
+            scans = program.getOutputIterator(file);
+        }
+
+        public DeconvolutionProgram getProgram() {
+            return program;
+        }
+
+        public Iterator<ExperimentalScan> getScans() {
+            return scans;
+        }
     }
 
     private static class IonMatch {

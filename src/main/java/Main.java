@@ -1,10 +1,7 @@
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
@@ -72,9 +69,34 @@ public class Main {
                         }
                         System.out.println(scans.count());
                     } catch (IOException e) {
-                        e.printStackTrace();
                         System.out.println("File reading error.");
                     }
+                }
+            }
+        },
+
+        search {
+            @Override
+            protected void exec(String[] args) {
+                try {
+                    Path theoreticScansPath = Paths.get(args[1]);
+                    Path outputPath = Paths.get(args[2]);
+                    int pos = 3;
+                    List<Analyzer.ScanStream> programRes = new ArrayList<>();
+                    while (pos < args.length) {
+                        DeconvolutionProgram program =
+                                DeconvolutionProgram.valueOf(args[pos++]);
+                        Path file = Paths.get(args[pos++]);
+                        programRes.add(new Analyzer.ScanStream(program, file));
+                    }
+                    Analyzer.ScanStream[] scanStreams =
+                            new Analyzer.ScanStream[programRes.size()];
+                    for (int i = 0; i < programRes.size(); i++) {
+                        scanStreams[i] = programRes.get(i);
+                    }
+                    Analyzer.search(theoreticScansPath, outputPath, scanStreams);
+                } catch (IOException e) {
+                    System.out.println(e.getMessage());
                 }
             }
         };

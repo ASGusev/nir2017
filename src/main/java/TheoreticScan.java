@@ -38,7 +38,8 @@ public class TheoreticScan extends Scan {
         return stringSequence;
     }
 
-    public static Stream<TheoreticScan> readTable(Path tablePath) throws IOException {
+    public static Stream<TheoreticScan> readTable(Path tablePath)
+            throws IOException {
         return Files.lines(tablePath)
                 .skip(1)
                 .map(TheoreticScan::parseTableLine);
@@ -46,7 +47,8 @@ public class TheoreticScan extends Scan {
 
     public static Map<Integer, TheoreticScan> mapFromTable(Path tablePath)
             throws IOException {
-        return readTable(tablePath).collect(Collectors.toMap(Scan::getId, scan -> scan));
+        return readTable(tablePath).collect(Collectors.toMap(Scan::getId,
+                scan -> scan));
     }
 
     public List<MassShift> getModifications() {
@@ -62,7 +64,8 @@ public class TheoreticScan extends Scan {
                     end = acids + 1;
                     pos += 2;
                     int massEndIndex = stringSequence.indexOf(']', pos);
-                    mass = Double.valueOf(stringSequence.substring(pos, massEndIndex));
+                    mass = Double.valueOf(stringSequence.substring(pos,
+                            massEndIndex));
                     modifications.add(new MassShift(start, end, mass));
                     pos = massEndIndex;
                 } else {
@@ -185,7 +188,8 @@ public class TheoreticScan extends Scan {
                     } case ')': {
                         pos += 2;
                         int closingPos = stringSequence.indexOf(']', pos);
-                        prefMass += Double.valueOf(stringSequence.substring(pos, closingPos));
+                        prefMass += Double.valueOf(
+                                stringSequence.substring(pos, closingPos));
                         pos = closingPos;
                         modified = false;
                         ionsBList.add(new Ion('B', acidsNumber, prefMass));
