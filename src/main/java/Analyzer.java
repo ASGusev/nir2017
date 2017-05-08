@@ -5,10 +5,11 @@ import java.nio.file.Path;
 import java.util.*;
 
 public class Analyzer {
-    final static String BEGIN = "BEGIN ";
-    final static String END = "END ";
-    final static String PRISM = "PRISM";
-    final static String SPECTRUM_ID_PREF = "SPECTRUM_ID=%d\n";
+    private static final String ION = "ION";
+    private static final String BEGIN = "BEGIN ";
+    private static final String END = "END ";
+    private static final String PRISM = "PRISM";
+    private static final String SPECTRUM_ID_PREF = "SPECTRUM_ID=%d\n";
 
     public static void annotate(Iterator<ExperimentalScan> experimentalScans,
                                 Map<Integer, TheoreticScan> theoreticScans,
@@ -97,13 +98,17 @@ public class Analyzer {
         annotationWriter.close();
     }
 
-    public static void search(Path table, Path outputPath, ScanStream... streams)
-            throws IOException {
-        Map<DeconvolutionProgram, Set<Integer>> programSets = new HashMap<>();
+    public static void searchPeaks(Path table, Path outputPath,
+                                   ScanStream... streams) throws IOException {
+        final double ACCURACY = 1e-5;
+        Map<DeconvolutionProgram, Map<Integer,ExperimentalScan>> programResults =
+                new HashMap<>();
         for (ScanStream stream: streams) {
-            Set<Integer> scans = programSets.computeIfAbsent(stream.getProgram(),
-                    program -> new HashSet<>());
-            stream.getScans().forEachRemaining(scan -> scans.add(scan.getId()));
+            Map<Integer,ExperimentalScan> scans =
+                    programResults.computeIfAbsent(stream.getProgram(),
+                    program -> new HashMap<>());
+            stream.getScans().forEachRemaining(scan ->
+                    scans.put(scan.getId(), scan));
         }
 
         try (BufferedWriter resWriter = Files.newBufferedWriter(outputPath)) {
@@ -112,15 +117,42 @@ public class Analyzer {
                     resWriter.write(BEGIN + PRISM + '\n');
                     resWriter.write(String.format(SPECTRUM_ID_PREF,
                             theoreticScan.getId()));
-                    List<DeconvolutionProgram> finderPrograms = new ArrayList<>();
-                    programSets.forEach((program, scansSet) -> {
-                        if (scansSet.contains(theoreticScan.getId())) {
-                            finderPrograms.add(program);
+
+                    Map<DeconvolutionProgram,double[]> findings =
+                            new HashMap<>();
+                    programResults.forEach((program, scans) -> {
+                        if (scans.containsKey(theoreticScan.getId())) {
+                            double[] peaks = scans.get(theoreticScan.getId())
+                                    .getPeaks();
+                            Arrays.sort(peaks);
+                            findings.put(program, peaks);
                         }
                     });
-                    for (DeconvolutionProgram program: finderPrograms) {
-                        resWriter.write(program.toString() + '\n');
+                    for (TheoreticScan.Ion ion: theoreticScan.getIons()) {
+                        double eps = ion.getMass() * ACCURACY;
+                        StringBuilder titleBuilder = new StringBuilder();
+                        titleBuilder.append(ION);
+                        titleBuilder.append(' ');
+                        titleBuilder.append(ion.getType());
+                        titleBuilder.append(ion.getNumber());
+                        titleBuilder.append(' ');
+                        titleBuilder.append(String.valueOf(ion.getMass()));
+                        titleBuilder.append('\n');
+                        resWriter.write(titleBuilder.toString());
+                        List<DeconvolutionProgram> finders = new ArrayList<>();
+                        findings.forEach(((program, peaks) -> {
+                            int ind = -1 - Arrays.binarySearch(peaks, ion.getMass());
+                            if (ind > 0 && Math.abs(peaks[ind - 1] - ion.getMass()) < eps ||
+                                    ind < peaks.length &&
+                                            Math.abs(peaks[ind] - ion.getMass()) < eps) {
+                                finders.add(program);
+                            }
+                        }));
+                        for (DeconvolutionProgram program: finders) {
+                            resWriter.write(program.toString() + '\n');
+                        }
                     }
+
                     resWriter.write(END + PRISM + '\n');
                     resWriter.write('\n');
                 } catch (IOException e) {

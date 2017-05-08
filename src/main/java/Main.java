@@ -75,7 +75,7 @@ public class Main {
             }
         },
 
-        search {
+        searchPeaks {
             @Override
             protected void exec(String[] args) {
                 try {
@@ -94,7 +94,7 @@ public class Main {
                     for (int i = 0; i < programRes.size(); i++) {
                         scanStreams[i] = programRes.get(i);
                     }
-                    Analyzer.search(theoreticScansPath, outputPath, scanStreams);
+                    Analyzer.searchPeaks(theoreticScansPath, outputPath, scanStreams);
                 } catch (IOException e) {
                     System.out.println(e.getMessage());
                 }

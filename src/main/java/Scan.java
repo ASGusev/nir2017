@@ -4,7 +4,7 @@ public class Scan {
     private int charge;
     private double precursorMass;
 
-    Scan(int id, int prsmId, int charge, double precursorMass) {
+    public Scan(int id, int prsmId, int charge, double precursorMass) {
         this.id = id;
         this.prsmId = prsmId;
         this.charge = charge;
