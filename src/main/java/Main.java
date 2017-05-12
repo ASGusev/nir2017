@@ -99,6 +99,46 @@ public class Main {
                     System.out.println(e.getMessage());
                 }
             }
+        },
+
+        countFound {
+            @Override
+            protected void exec(String[] args) {
+                int pos = 1;
+                boolean excluding = false;
+                double accuracy = Double.valueOf(args[pos++]);
+                Path theoreticTable = Paths.get(args[pos++]);
+                List <Map<Integer, ExperimentalScan>> foundBy =
+                        new ArrayList<>();
+                List <Map<Integer, ExperimentalScan>> notFoundBy =
+                        new ArrayList<>();
+                while (pos < args.length) {
+                    if (args[pos].equals("-exclude")) {
+                        excluding= true;
+                        pos++;
+                    } else {
+                        try {
+                            DeconvolutionProgram program =
+                                    DeconvolutionProgram.valueOf(args[pos++]);
+                            Map<Integer, ExperimentalScan> map =
+                                    program.getOutputMap(Paths.get(args[pos++]));
+                            if (excluding) {
+                                notFoundBy.add(map);
+                            } else {
+                                foundBy.add(map);
+                            }
+                        } catch (IOException e) {
+                            System.out.println(e.getMessage());
+                        }
+                    }
+                    try {
+                        System.out.println(Analyzer.countExclusivelyFound(
+                                theoreticTable, foundBy, notFoundBy, accuracy));
+                    } catch (IOException e) {
+                        System.out.println(e.getMessage());
+                    }
+                }
+            }
         };
 
         protected abstract void exec(String[] args);

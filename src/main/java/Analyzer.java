@@ -141,10 +141,18 @@ public class Analyzer {
                         resWriter.write(titleBuilder.toString());
                         List<DeconvolutionProgram> finders = new ArrayList<>();
                         findings.forEach(((program, peaks) -> {
-                            int ind = -1 - Arrays.binarySearch(peaks, ion.getMass());
+                            /*
+                            int ind = Arrays.binarySearch(peaks, ion.getMass());
+                            if (ind < 0) {
+                                ind = -1 - ind;
+                            }
                             if (ind > 0 && Math.abs(peaks[ind - 1] - ion.getMass()) < eps ||
                                     ind < peaks.length &&
                                             Math.abs(peaks[ind] - ion.getMass()) < eps) {
+                                finders.add(program);
+                            }
+                            */
+                            if (contains(peaks, ion.getMass(), eps)) {
                                 finders.add(program);
                             }
                         }));
@@ -161,6 +169,79 @@ public class Analyzer {
             });
         } catch (Error e) {
             throw (IOException) e.getCause();
+        }
+    }
+
+    public static int countExclusivelyFound(Path table,
+                                  List<Map<Integer, ExperimentalScan>> finders,
+                                  List<Map<Integer, ExperimentalScan>> nonFinders,
+                                            double accuracy)
+            throws IOException {
+
+        Counter findings = new Counter();
+        TheoreticScan.readTable(table).forEach(theoreticScan -> {
+            TheoreticScan.Ion[] theoreticIons = theoreticScan.getIons();
+            List<double[]> foundScanIons = new ArrayList<>();
+            List<double[]> nonFoundScanIons = new ArrayList<>();
+            for (Map<Integer, ExperimentalScan> finder : finders) {
+                ExperimentalScan foundScan = finder.get(theoreticScan.getId());
+                if (foundScan == null) {
+                    return;
+                } else {
+                    double[] ions = Arrays.copyOf(foundScan.getPeaks(),
+                            foundScan.getPeaks().length);
+                    Arrays.sort(ions);
+                    foundScanIons.add(ions);
+                }
+            }
+            for (Map<Integer, ExperimentalScan> finder : nonFinders) {
+                ExperimentalScan foundScan = finder.get(theoreticScan.getId());
+                if (foundScan == null) {
+                    nonFoundScanIons.add(null);
+                } else {
+                    double[] ions = Arrays.copyOf(foundScan.getPeaks(),
+                            foundScan.getPeaks().length);
+                    Arrays.sort(ions);
+                    nonFoundScanIons.add(ions);
+                }
+            }
+
+            for (TheoreticScan.Ion ion: theoreticIons) {
+                double eps = accuracy * ion.getMass();
+                for (int i = 0; i < foundScanIons.size(); i++) {
+                    if (!contains(foundScanIons.get(i), ion.getMass(), eps)) {
+                        return;
+                    }
+                }
+                for (double[] nonFoundPeaks: nonFoundScanIons) {
+                    if (contains(nonFoundPeaks, ion.getMass(), eps)) {
+                        return;
+                    }
+                }
+            }
+            findings.inc();
+        });
+        return findings.get();
+    }
+
+    private static boolean contains(double[] arr, double key, double eps) {
+        int ind = Arrays.binarySearch(arr, key);
+        if (ind < 0) {
+            ind = -1 - ind;
+        }
+        return ind > 0 && Math.abs(arr[ind - 1] - key) < eps ||
+                ind < arr.length && Math.abs(arr[ind] - key) < eps;
+    }
+
+    private static class Counter {
+        private int counter = 0;
+
+        private void inc() {
+            counter++;
+        }
+
+        private int get() {
+            return counter;
         }
     }
 

@@ -2,9 +2,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 
 public enum DeconvolutionProgram {
     MSDeconv {
@@ -238,6 +236,16 @@ public enum DeconvolutionProgram {
 
     public abstract Iterator<ExperimentalScan> getOutputIterator(Path filePath)
             throws IOException;
+
+    public Map<Integer, ExperimentalScan> getOutputMap(Path path)
+            throws IOException {
+        Map<Integer, ExperimentalScan> outputMap = new HashMap<>();
+        Iterator<ExperimentalScan> outputIterator = getOutputIterator(path);
+        outputIterator.forEachRemaining(scan ->
+            outputMap.put(scan.getId(), scan)
+        );
+        return outputMap;
+    }
 
     public static class ScanReadError extends Error {
         ScanReadError() {
