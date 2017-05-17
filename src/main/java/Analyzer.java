@@ -3,6 +3,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.stream.Stream;
 
 public class Analyzer {
     private static final String ION = "ION";
@@ -13,8 +14,8 @@ public class Analyzer {
 
     public static void annotate(Iterator<ExperimentalScan> experimentalScans,
                                 Map<Integer, TheoreticScan> theoreticScans,
-                                Path outputPath) throws IOException {
-        final double maxEValue = 1e-10;
+                                Path outputPath,
+                                double maxEValue) throws IOException {
         final double precision = 1e-5;
         final String MATCH_PAIR = "MATCH_PAIR";
         final String MASS_SHIFT = "MASS_SHIFT";
@@ -141,17 +142,6 @@ public class Analyzer {
                         resWriter.write(titleBuilder.toString());
                         List<DeconvolutionProgram> finders = new ArrayList<>();
                         findings.forEach(((program, peaks) -> {
-                            /*
-                            int ind = Arrays.binarySearch(peaks, ion.getMass());
-                            if (ind < 0) {
-                                ind = -1 - ind;
-                            }
-                            if (ind > 0 && Math.abs(peaks[ind - 1] - ion.getMass()) < eps ||
-                                    ind < peaks.length &&
-                                            Math.abs(peaks[ind] - ion.getMass()) < eps) {
-                                finders.add(program);
-                            }
-                            */
                             if (contains(peaks, ion.getMass(), eps)) {
                                 finders.add(program);
                             }
@@ -177,7 +167,6 @@ public class Analyzer {
                                   List<Map<Integer, ExperimentalScan>> nonFinders,
                                             double accuracy)
             throws IOException {
-
         Counter findings = new Counter();
         TheoreticScan.readTable(table).forEach(theoreticScan -> {
             TheoreticScan.Ion[] theoreticIons = theoreticScan.getIons();
@@ -206,22 +195,75 @@ public class Analyzer {
                 }
             }
 
-            for (TheoreticScan.Ion ion: theoreticIons) {
+            Stream.of(theoreticIons).forEach(ion -> {
                 double eps = accuracy * ion.getMass();
-                for (int i = 0; i < foundScanIons.size(); i++) {
-                    if (!contains(foundScanIons.get(i), ion.getMass(), eps)) {
+                for (double[] foundScanIon : foundScanIons) {
+                    if (!contains(foundScanIon, ion.getMass(), eps)) {
                         return;
                     }
                 }
                 for (double[] nonFoundPeaks: nonFoundScanIons) {
-                    if (contains(nonFoundPeaks, ion.getMass(), eps)) {
+                    if (nonFoundPeaks != null &&
+                            contains(nonFoundPeaks, ion.getMass(), eps)) {
                         return;
                     }
                 }
-            }
-            findings.inc();
+                findings.inc();
+            });
         });
         return findings.get();
+    }
+
+    public static List<Peak> searchExclusivelyFound(Path table,
+                                            List<Map<Integer, ExperimentalScan>> finders,
+                                            List<Map<Integer, ExperimentalScan>> nonFinders,
+                                            double accuracy)
+            throws IOException {
+        List<Peak> exclusivelyFound = new ArrayList<>();
+        TheoreticScan.readTable(table).forEach(theoreticScan -> {
+            TheoreticScan.Ion[] theoreticIons = theoreticScan.getIons();
+            List<double[]> foundScanIons = new ArrayList<>();
+            List<double[]> nonFoundScanIons = new ArrayList<>();
+            for (Map<Integer, ExperimentalScan> finder : finders) {
+                ExperimentalScan foundScan = finder.get(theoreticScan.getId());
+                if (foundScan == null) {
+                    return;
+                } else {
+                    double[] ions = Arrays.copyOf(foundScan.getPeaks(),
+                            foundScan.getPeaks().length);
+                    Arrays.sort(ions);
+                    foundScanIons.add(ions);
+                }
+            }
+            for (Map<Integer, ExperimentalScan> finder : nonFinders) {
+                ExperimentalScan foundScan = finder.get(theoreticScan.getId());
+                if (foundScan == null) {
+                    nonFoundScanIons.add(null);
+                } else {
+                    double[] ions = Arrays.copyOf(foundScan.getPeaks(),
+                            foundScan.getPeaks().length);
+                    Arrays.sort(ions);
+                    nonFoundScanIons.add(ions);
+                }
+            }
+
+            Stream.of(theoreticIons).forEach(ion -> {
+                double eps = accuracy * ion.getMass();
+                for (double[] foundScanIon : foundScanIons) {
+                    if (!contains(foundScanIon, ion.getMass(), eps)) {
+                        return;
+                    }
+                }
+                for (double[] nonFoundPeaks: nonFoundScanIons) {
+                    if (nonFoundPeaks != null &&
+                            contains(nonFoundPeaks, ion.getMass(), eps)) {
+                        return;
+                    }
+                }
+                exclusivelyFound.add(new Peak(theoreticScan, ion));
+            });
+        });
+        return exclusivelyFound;
     }
 
     private static boolean contains(double[] arr, double key, double eps) {
