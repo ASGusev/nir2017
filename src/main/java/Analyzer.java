@@ -12,6 +12,16 @@ public class Analyzer {
     private static final String PRISM = "PRISM";
     private static final String SPECTRUM_ID_PREF = "SPECTRUM_ID=%d\n";
 
+    /**
+     * Annotates deconvolution results.
+     * @param experimentalScans iterator over the deconvolution results.
+     * @param theoreticScans map from theoretical scan number to its
+     *                       TheoreticalScan representation.
+     * @param outputPath the path to put the results.
+     * @param maxEValue the maximum acceptable eValue of a theoretical
+     *                  scan.
+     * @throws IOException in case of an output writing error.
+     */
     public static void annotate(Iterator<ExperimentalScan> experimentalScans,
                                 Map<Integer, TheoreticScan> theoreticScans,
                                 Path outputPath,
@@ -99,8 +109,16 @@ public class Analyzer {
         annotationWriter.close();
     }
 
+    /**
+     * For each theoretic peak lists all the programs that have found it.
+     * @param table a table of theoretic scans.
+     * @param outputPath the path to put results at.
+     * @param streams a list of ScanStreams for all the programs to use.
+     * @throws IOException if a read/write error occurs.
+     */
     public static void searchPeaks(Path table, Path outputPath,
-                                   ScanStream... streams) throws IOException {
+                                   ScanStream... streams)
+            throws IOException {
         final double ACCURACY = 1e-5;
         Map<DeconvolutionProgram, Map<Integer,ExperimentalScan>> programResults =
                 new HashMap<>();
@@ -162,6 +180,19 @@ public class Analyzer {
         }
     }
 
+    /**
+     * Counts peaks that were found by one set of programs and were not
+     * found by another.
+     * @param table the table with theoretical scans.
+     * @param finders a list of maps of scans found by programs that
+     *                should have found the peaks to count.
+     * @param nonFinders list of maps of scans programs that shouldn't
+     *                   have found the peaks.
+     * @param accuracy the accuracy of peaks comparison.
+     * @return the number of the peaks that were found only by the
+     * required programs.
+     * @throws IOException in case of a table reading error.
+     */
     public static int countExclusivelyFound(Path table,
                                   List<Map<Integer, ExperimentalScan>> finders,
                                   List<Map<Integer, ExperimentalScan>> nonFinders,
@@ -214,6 +245,19 @@ public class Analyzer {
         return findings.get();
     }
 
+    /**
+     * Looks for peaks that were found by one set of programs and were
+     * not found by another.
+     * @param table the table with theoretical scans.
+     * @param finders a list of maps of scans found by programs that
+     *                should have found the peaks to count.
+     * @param nonFinders list of maps of scans programs that shouldn't
+     *                   have found the peaks.
+     * @param accuracy the accuracy of peaks comparison.
+     * @return a list of the peaks that were found only by the
+     * required programs.
+     * @throws IOException in case of a table reading error.
+     */
     public static List<Peak> searchExclusivelyFound(Path table,
                                             List<Map<Integer, ExperimentalScan>> finders,
                                             List<Map<Integer, ExperimentalScan>> nonFinders,
@@ -266,6 +310,9 @@ public class Analyzer {
         return exclusivelyFound;
     }
 
+    /**
+     * Checks if the array contains the value with the given precision.
+     */
     private static boolean contains(double[] arr, double key, double eps) {
         int ind = Arrays.binarySearch(arr, key);
         if (ind < 0) {
@@ -287,6 +334,10 @@ public class Analyzer {
         }
     }
 
+    /**
+     * Represents a stream of scans defined by a program and an
+     * iterator of the scans.
+     */
     public static class ScanStream {
         private final DeconvolutionProgram program;
         private final Iterator<ExperimentalScan> scans;
@@ -305,6 +356,10 @@ public class Analyzer {
         }
     }
 
+    /**
+     * Represents a match between a theoretical b- or y-ion and a peak
+     * from an experiment.
+     */
     private static class IonMatch {
         private final TheoreticScan.Ion ion;
         private final double peakMass;

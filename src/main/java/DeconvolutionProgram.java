@@ -4,6 +4,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 
+/**
+ * A enumeration of supported deconvolution programs.
+ */
 public enum DeconvolutionProgram {
     MSDeconv {
         private final String SCAN_BEGINNING = "BEGIN IONS";
@@ -234,9 +237,21 @@ public enum DeconvolutionProgram {
         }
     };
 
+    /**
+     * Makes an iterator over the output of the program.
+     * @param filePath the output file to read.
+     * @return an Iterator<ExperimentalScan> containing all the scans
+     * described in the file.
+     * @throws IOException if an error during reading the file occurs.
+     */
     public abstract Iterator<ExperimentalScan> getOutputIterator(Path filePath)
             throws IOException;
 
+    /**
+     * Reads a file with output of the program and collects all the scans
+     * in a map from the number of the scan to tis ExperimentalScan
+     * representation.
+     */
     public Map<Integer, ExperimentalScan> getOutputMap(Path path)
             throws IOException {
         Map<Integer, ExperimentalScan> outputMap = new HashMap<>();
@@ -247,12 +262,15 @@ public enum DeconvolutionProgram {
         return outputMap;
     }
 
+    /**
+     * A error thrown in case of an error reading a scan.
+     */
     public static class ScanReadError extends Error {
-        ScanReadError() {
+        private ScanReadError() {
             super();
         }
 
-        ScanReadError(Throwable cause) {
+        private ScanReadError(Throwable cause) {
             super(cause);
         }
     }

@@ -1,3 +1,6 @@
+/**
+ * A class representing a scan received from an experiment.
+ */
 public class ExperimentalScan extends Scan {
     private double[] peaks;
 

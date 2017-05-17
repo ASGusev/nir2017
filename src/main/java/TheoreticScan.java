@@ -5,6 +5,9 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+/**
+ * A class for a scan prediction based on theoretical data.
+ */
 public class TheoreticScan extends Scan {
     private AminoAcid[] sequence;
     private Ion[] ions;
@@ -19,6 +22,12 @@ public class TheoreticScan extends Scan {
         this.stringSequence = stringSequence;
     }
 
+    /**
+     * Gets all the b- and y-ions of the scan.
+     * @return an array containing all the b- and y- ions that may
+     * appear as peaks in a experimental range of the scan in ascending
+     * order.
+     */
     public Ion[] getIons() {
         if (ions == null) {
             makeIons();
@@ -30,14 +39,28 @@ public class TheoreticScan extends Scan {
         return eValue;
     }
 
+    /**
+     * Gets the amino acid sequence of the scan.
+     * @return an array with all the amino acids of the peptide.
+     */
     public AminoAcid[] getSequence() {
         return sequence;
     }
 
+    /**
+     * Gets the amino acid sequence in the string form.
+     * @return a string representing the acid sequence of the peptide.
+     */
     public String getStringSequence() {
         return stringSequence;
     }
 
+    /**
+     * Makes a stream containing all the scans from a table.
+     * @param tablePath the path to the file with the table.
+     * @return a stream with all the scans presented in the table.
+     * @throws IOException if an error occurs during reading the table.
+     */
     public static Stream<TheoreticScan> readTable(Path tablePath)
             throws IOException {
         return Files.lines(tablePath)
@@ -45,12 +68,26 @@ public class TheoreticScan extends Scan {
                 .map(TheoreticScan::parseTableLine);
     }
 
+    /**
+     * Reads a table of theoretic scans and makes a map from the scan
+     * ids to the TheoreticScan representations of them.
+     * @param tablePath the path to the table to read.
+     * @return map from the scan
+     * ids to the TheoreticScan representations of them.
+     * @throws IOException if an error during reading the table file
+     * occurs.
+     */
     public static Map<Integer, TheoreticScan> mapFromTable(Path tablePath)
             throws IOException {
         return readTable(tablePath).collect(Collectors.toMap(Scan::getId,
                 scan -> scan));
     }
 
+    /**
+     * Gets a list of amino acid mass modifications.
+     * @return a list containing MassShift representations of all the
+     * modifications of this scan.
+     */
     public List<MassShift> getModifications() {
         if (modifications == null) {
             modifications = new ArrayList<>();
@@ -76,6 +113,9 @@ public class TheoreticScan extends Scan {
         return modifications;
     }
 
+    /**
+     * A class representing a b- or y-ion of the peptide.
+     */
     public static class Ion {
         private final char type;
         private final int number;
@@ -87,6 +127,10 @@ public class TheoreticScan extends Scan {
             this.mass = mass;
         }
 
+        /**
+         * Gets the type of the ion('B' or 'Y')
+         * @return the type of the ion.
+         */
         public char getType() {
             return type;
         }
@@ -99,6 +143,9 @@ public class TheoreticScan extends Scan {
             return mass;
         }
 
+        /**
+         * A comparator for sorting ions in order of increasing mass.
+         */
         public static Comparator<Ion> MASS_ASCENDING_ORDER = (Ion ion1, Ion ion2) -> {
             if (ion1.mass < ion2.mass) {
                 return -1;
@@ -110,6 +157,9 @@ public class TheoreticScan extends Scan {
         };
     }
 
+    /**
+     * A class representing a modification of the amino sequence.
+     */
     public class MassShift {
         private final int start;
         private final int end;
@@ -134,6 +184,11 @@ public class TheoreticScan extends Scan {
         }
     }
 
+    /**
+     * Parses a line of a scan table.
+     * @return a TheoreticScan representation of the scan described in
+     * the line.
+     */
     private static TheoreticScan parseTableLine(String line) {
         String[] data = line.split("\t");
         Integer id  = Integer.valueOf(data[2]);

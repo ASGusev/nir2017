@@ -96,7 +96,8 @@ public class Main {
                     for (int i = 0; i < programRes.size(); i++) {
                         scanStreams[i] = programRes.get(i);
                     }
-                    Analyzer.searchPeaks(theoreticScansPath, outputPath, scanStreams);
+                    Analyzer.searchPeaks(theoreticScansPath, outputPath,
+                            scanStreams);
                 } catch (IOException e) {
                     System.out.println(e.getMessage());
                 }

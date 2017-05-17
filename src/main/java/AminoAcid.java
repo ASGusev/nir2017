@@ -1,3 +1,6 @@
+/**
+ * A class representing an amino acid with letter code and mass.
+ */
 public enum AminoAcid {
     A ('A', 71.03711),
     R ('R', 156.10111),
@@ -29,14 +32,28 @@ public enum AminoAcid {
         this.mass = mass;
     }
 
+    /**
+     * Gets the letter code off the acid.
+     * @return the letter code off the acid.
+     */
     public Character getLetterCode() {
         return letterCode;
     }
 
+    /**
+     * Gets the mass of the acid.
+     * @return the mass of the acid.
+     */
     public double getMass() {
         return mass;
     }
 
+    /**
+     * Makes an array containing masses of the acids. Each mass is
+     * stored at the position of its letter in the alphabet
+     * (letter - 'A').
+     * @return an array with all amino acid masses.
+     */
     public static double[] getMasses() {
         if (masses == null) {
             masses = new double[26];
