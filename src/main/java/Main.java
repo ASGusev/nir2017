@@ -49,7 +49,7 @@ public class Main {
 
             @Override
             protected String getDescription() {
-                return name() + "<program name> <deconvolution file>" +
+                return name() + " <program name> <deconvolution file>" +
                         " <table path> <output path> <max eValue> " +
                         "<accuracy> - annotate deconvolution results" +
                         "using the given theoretic scans table. Scans" +
@@ -108,7 +108,7 @@ public class Main {
 
             @Override
             protected String getDescription() {
-                return name() + "<filters> <table path> - count scans " +
+                return name() + " <filters> <table path> - count scans " +
                         "with certain properties in a table. Filters:" +
                         "-evalue_over <value>, -evalue_under <value>," +
                         "-modified, -not_modified.";
@@ -147,7 +147,7 @@ public class Main {
 
             @Override
             protected String getDescription() {
-                return name() + "<theoretic table path> <output path>" +
+                return name() + " <theoretic table path> <output path>" +
                         "<program outputs> - for each peak list " +
                         "programs that have found it. Program description" +
                         "format: <name> <output filepath>.";

@@ -6,11 +6,11 @@ import java.util.*;
 import java.util.stream.Stream;
 
 public class Analyzer {
-    private static final String ION = "ION";
     private static final String BEGIN = "BEGIN ";
     private static final String END = "END ";
     private static final String PRISM = "PRISM";
-    private static final String SPECTRUM_ID_PREF = "SPECTRUM_ID=%d\n";
+    private static final String SPECTRUM_ID = "SPECTRUM_ID=%d\n";
+    private static final String ION_TITLE = "ION %c%d %f\n";
 
     /**
      * Annotates deconvolution results.
@@ -30,6 +30,8 @@ public class Analyzer {
         final String MATCH_PAIR = "MATCH_PAIR";
         final String MASS_SHIFT = "MASS_SHIFT";
         final String UNMATCHED_PEAKS_TEMPLATE = "UNMATCHED_PEAKS=%d\n";
+        final String MODIFICATION_FORMAT = "%-3d %-3d %-3d %f\n";
+        final String MATCH_FORMAT = "%-3d %s\n";
 
         BufferedWriter annotationWriter = Files.newBufferedWriter(outputPath);
 
@@ -42,14 +44,15 @@ public class Analyzer {
 
                 try {
                     annotationWriter.write(BEGIN + PRISM + "\n");
-                    annotationWriter.write(String.format(SPECTRUM_ID_PREF,
+                    annotationWriter.write(String.format(SPECTRUM_ID,
                             scan.getId()));
 
                     annotationWriter.write(BEGIN + MASS_SHIFT + "\n");
                     List<TheoreticScan.MassShift> modifications =
                             theoreticScan.getModifications();
                     for (int i = 0; i < modifications.size(); i++) {
-                        annotationWriter.write(String.format("%-3d %-3d %-3d %f\n",
+                        annotationWriter.write(String.format(
+                                MODIFICATION_FORMAT,
                                 i, modifications.get(i).getStart(),
                                 modifications.get(i).getEnd(),
                                 modifications.get(i).getMass()));
@@ -88,7 +91,8 @@ public class Analyzer {
                     }
                     matches.sort(IonMatch.MASS_ASCENDING_ORDER);
                     for (int i = 0; i < matches.size(); i++) {
-                        annotationWriter.write(String.format("%-3d %s\n", i,
+                        annotationWriter.write(String.format(
+                                MATCH_FORMAT, i,
                                 matches.get(i).toString()));
                     }
                     annotationWriter.write(END + MATCH_PAIR + "\n");
@@ -134,7 +138,7 @@ public class Analyzer {
             TheoreticScan.readTable(table).forEach(theoreticScan -> {
                 try {
                     resWriter.write(BEGIN + PRISM + '\n');
-                    resWriter.write(String.format(SPECTRUM_ID_PREF,
+                    resWriter.write(String.format(SPECTRUM_ID,
                             theoreticScan.getId()));
 
                     Map<DeconvolutionProgram,double[]> findings =
@@ -149,15 +153,11 @@ public class Analyzer {
                     });
                     for (TheoreticScan.Ion ion: theoreticScan.getIons()) {
                         double eps = ion.getMass() * ACCURACY;
-                        StringBuilder titleBuilder = new StringBuilder();
-                        titleBuilder.append(ION);
-                        titleBuilder.append(' ');
-                        titleBuilder.append(ion.getType());
-                        titleBuilder.append(ion.getNumber());
-                        titleBuilder.append(' ');
-                        titleBuilder.append(String.valueOf(ion.getMass()));
-                        titleBuilder.append('\n');
-                        resWriter.write(titleBuilder.toString());
+                        String title = String.format(ION_TITLE,
+                                ion.getType(), ion.getNumber(),
+                                ion.getMass());
+
+                        resWriter.write(title);
                         List<DeconvolutionProgram> finders = new ArrayList<>();
                         findings.forEach(((program, peaks) -> {
                             if (contains(peaks, ion.getMass(), eps)) {
@@ -361,6 +361,7 @@ public class Analyzer {
      * from an experiment.
      */
     private static class IonMatch {
+        public static final String STRING_FORMAT = "%-18f %c%-2d %-18f";
         private final TheoreticScan.Ion ion;
         private final double peakMass;
 
@@ -371,7 +372,7 @@ public class Analyzer {
 
         @Override
         public String toString() {
-            return String.format("%-18f %c%-2d %-18f",
+            return String.format(STRING_FORMAT,
                     peakMass,
                     ion.getType(),
                     ion.getNumber(),

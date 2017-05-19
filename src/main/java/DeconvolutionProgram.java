@@ -86,13 +86,17 @@ public enum DeconvolutionProgram {
                     } catch (IOException e) {
                         try {
                             resultsReader.close();
-                        } catch (IOException e1) {}
+                        } catch (IOException e1) {
+                            e.addSuppressed(e1);
+                        }
                         throw new ScanReadError(e);
                     }
                     if (line == null) {
                         try {
                             resultsReader.close();
-                        } catch (IOException e) {}
+                        } catch (IOException e) {
+                            throw new ScanReadError(e);
+                        }
                     }
                     return scan;
                 }
@@ -107,7 +111,8 @@ public enum DeconvolutionProgram {
         private final String PEPMASS_PREF = "PEPMASS=";
 
         @Override
-        public Iterator<ExperimentalScan> getOutputIterator(final Path filePath) throws IOException {
+        public Iterator<ExperimentalScan> getOutputIterator(
+                final Path filePath) throws IOException {
             return new Iterator<ExperimentalScan>() {
                 private ExperimentalScan nextScan;
                 private BufferedReader resultsReader;
@@ -177,13 +182,17 @@ public enum DeconvolutionProgram {
                     } catch (IOException e) {
                         try {
                             resultsReader.close();
-                        } catch (IOException e1) {}
+                        } catch (IOException e1) {
+                            e.addSuppressed(e1);
+                        }
                         throw new ScanReadError(e);
                     }
                     if (line == null) {
                         try {
                             resultsReader.close();
-                        } catch (IOException e) {}
+                        } catch (IOException e) {
+                            throw new ScanReadError(e);
+                        }
                     }
                     return scan;
                 }

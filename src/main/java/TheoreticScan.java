@@ -221,6 +221,7 @@ public class TheoreticScan extends Scan {
 
     private void makeIons() {
         final double DELTA_Y = 18.01528;
+
         int pos = 0;
         double prefMass = 0.0;
         boolean modified = false;
@@ -228,6 +229,7 @@ public class TheoreticScan extends Scan {
         List<Ion> ionsBList = new ArrayList<>();
         List<Ion> ionsYList = new ArrayList<>();
         int acidsNumber = 0;
+
         for (; pos < stringSequence.length() - 1; pos++) {
             if (Character.isLetter(stringSequence.charAt(pos))) {
                 acidsNumber++;
