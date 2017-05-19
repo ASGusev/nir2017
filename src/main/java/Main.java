@@ -41,7 +41,7 @@ public class Main {
                     Map<Integer, TheoreticScan> theoreticScans =
                             TheoreticScan.mapFromTable(theoreticScansTablePath);
                     Analyzer.annotate(outputIterator, theoreticScans,
-                            outputPath, maxEValue);
+                            outputPath, maxEValue, accuracy);
                 } catch (IOException e) {
                     System.out.println("File read/write error.");
                 }

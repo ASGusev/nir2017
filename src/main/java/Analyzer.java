@@ -25,8 +25,8 @@ public class Analyzer {
     public static void annotate(Iterator<ExperimentalScan> experimentalScans,
                                 Map<Integer, TheoreticScan> theoreticScans,
                                 Path outputPath,
-                                double maxEValue) throws IOException {
-        final double precision = 1e-5;
+                                double maxEValue,
+                                double precision) throws IOException {
         final String MATCH_PAIR = "MATCH_PAIR";
         final String MASS_SHIFT = "MASS_SHIFT";
         final String UNMATCHED_PEAKS_TEMPLATE = "UNMATCHED_PEAKS=%d\n";
