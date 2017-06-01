@@ -3,6 +3,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class Analyzer {
@@ -311,6 +312,77 @@ public class Analyzer {
     }
 
     /**
+     * Makes a stream of all matches between theoretic ions and
+     * experimental peaks.
+     * @param theoreticScans a stream of theoretic ions. Is destroyed
+     *                       during execution.
+     * @param experimentalScans an iterator over experimental scans to
+     *                          use.
+     * @param accuracy the accuracy of comparision.
+     * @return a stream containing a PeakMatch object for every
+     * coincidence between a theoretic ion and an experimental peak.
+     */
+    public static Stream<PeakMatch> getPeakMatchesStream(Stream <TheoreticScan> theoreticScans,
+                                                  Iterator<ExperimentalScan> experimentalScans,
+                                                  double accuracy) {
+        Map <Integer, double[]> experimentalRanges = new HashMap<>();
+        experimentalScans.forEachRemaining(scan ->
+                experimentalRanges.put(scan.getId(), scan.getPeaks()));
+
+        return theoreticScans.flatMap(thScan -> {
+            double[] exRange = experimentalRanges.get(thScan.getId());
+            if (exRange == null) {
+                return Stream.empty();
+            }
+            Arrays.sort(exRange);
+
+            return Arrays.stream(thScan.getIons()).flatMap(ion -> {
+                double mass = ion.getMass();
+                double eps = accuracy * mass;
+
+                int beginning = Arrays.binarySearch(exRange, mass - eps);
+                if (beginning < 0) {
+                    beginning = -1 - beginning;
+                } else {
+                    while (beginning > 0 &&
+                            exRange[beginning] == mass - eps) {
+                        beginning--;
+                    }
+                }
+                int end = Arrays.binarySearch(exRange, mass + eps);
+                if (end < 0) {
+                    end = -1 - end;
+                } else {
+                    while (end < exRange.length &&
+                            exRange[end] == mass + eps) {
+                        end++;
+                    }
+                }
+
+                return Arrays.stream(exRange, beginning, end)
+                        .mapToObj(exMass -> new PeakMatch(mass, exMass));
+            });
+        });
+    }
+
+    public static TreeMap<Double, Long> matchDiffsDistribution(
+            Stream <TheoreticScan> theoreticScans,
+            Iterator<ExperimentalScan> experimentalScans,
+            double accuracy,
+            double step) {
+        return getPeakMatchesStream(theoreticScans, experimentalScans, accuracy)
+                .collect(Collectors.groupingBy(
+                        match -> round(match.getDiff(), step),
+                        TreeMap::new,
+                        Collectors.counting()));
+    }
+
+    public static double round(double val, double step) {
+        final double EPS = 1e-9;
+        return step * Math.floor(val / step + EPS);
+    }
+
+    /**
      * Checks if the array contains the value with the given precision.
      */
     private static boolean contains(double[] arr, double key, double eps) {
@@ -353,6 +425,28 @@ public class Analyzer {
 
         public Iterator<ExperimentalScan> getScans() {
             return scans;
+        }
+    }
+
+    public static class PeakMatch {
+        private final double theoreticMass;
+        private final double experimentalMass;
+
+        private PeakMatch(double theoreticMass, double experimentalMass) {
+            this.theoreticMass = theoreticMass;
+            this.experimentalMass = experimentalMass;
+        }
+
+        public double getTheoreticMass() {
+            return theoreticMass;
+        }
+
+        public double getExperimentalMass() {
+            return experimentalMass;
+        }
+
+        public double getDiff() {
+            return experimentalMass - theoreticMass;
         }
     }
 
