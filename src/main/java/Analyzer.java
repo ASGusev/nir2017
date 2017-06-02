@@ -365,16 +365,46 @@ public class Analyzer {
         });
     }
 
-    public static TreeMap<Double, Long> matchDiffsDistribution(
+    public static SortedMap<Double, Long> matchDiffsDistribution(
             Stream <TheoreticScan> theoreticScans,
             Iterator<ExperimentalScan> experimentalScans,
             double accuracy,
             double step) {
-        return getPeakMatchesStream(theoreticScans, experimentalScans, accuracy)
+        final double EPS = 1e-9;
+        TreeMap<Double, Long> dist =
+                getPeakMatchesStream(theoreticScans, experimentalScans,
+                accuracy)
                 .collect(Collectors.groupingBy(
                         match -> round(match.getDiff(), step),
                         TreeMap::new,
                         Collectors.counting()));
+        long least = (long)Math.floor(dist.firstKey() / step + EPS);
+        long biggest = (long)Math.floor(dist.lastKey() / step + EPS);
+        for (long i = least; i < biggest; i++) {
+            dist.putIfAbsent(i * step, 0L);
+        }
+        return dist;
+    }
+
+    public static TreeMap<Double, Double> matchDiffsByMass(
+            Stream <TheoreticScan> theoreticScans,
+            Iterator<ExperimentalScan> experimentalScans,
+            double accuracy,
+            double step) {
+        final double EPS = 1e-9;
+        TreeMap<Double, Double> diffs = getPeakMatchesStream(
+                theoreticScans, experimentalScans, accuracy)
+                .collect(Collectors.groupingBy(
+                        match -> round(match.getTheoreticMass(), step),
+                        TreeMap::new,
+                        Collectors.averagingDouble(PeakMatch::getDiff)
+                ));
+        long least = (long)Math.floor(diffs.firstKey() / step + EPS);
+        long biggest = (long)Math.floor(diffs.lastKey() / step + EPS);
+        for (long i = least; i < biggest; i++) {
+            diffs.putIfAbsent(i * step, 0.0);
+        }
+        return diffs;
     }
 
     public static double round(double val, double step) {
