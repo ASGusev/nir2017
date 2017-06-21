@@ -323,13 +323,16 @@ public class Analyzer {
      * coincidence between a theoretic ion and an experimental peak.
      */
     public static Stream<PeakMatch> getPeakMatchesStream(Stream <TheoreticScan> theoreticScans,
-                                                  Iterator<ExperimentalScan> experimentalScans,
-                                                  double accuracy) {
+                                                         Iterator<ExperimentalScan> experimentalScans,
+                                                         double accuracy,
+                                                         double maxEValue) {
         Map <Integer, double[]> experimentalRanges = new HashMap<>();
         experimentalScans.forEachRemaining(scan ->
                 experimentalRanges.put(scan.getId(), scan.getPeaks()));
 
-        return theoreticScans.flatMap(thScan -> {
+        return theoreticScans
+                .filter(scan -> scan.getEValue() <= maxEValue)
+                .flatMap(thScan -> {
             double[] exRange = experimentalRanges.get(thScan.getId());
             if (exRange == null) {
                 return Stream.empty();
@@ -369,11 +372,12 @@ public class Analyzer {
             Stream <TheoreticScan> theoreticScans,
             Iterator<ExperimentalScan> experimentalScans,
             double accuracy,
-            double step) {
+            double step,
+            double maxEValue) {
         final double EPS = 1e-9;
         TreeMap<Double, Long> dist =
                 getPeakMatchesStream(theoreticScans, experimentalScans,
-                accuracy)
+                accuracy, maxEValue)
                 .collect(Collectors.groupingBy(
                         match -> round(match.getDiff(), step),
                         TreeMap::new,
@@ -390,14 +394,39 @@ public class Analyzer {
             Stream <TheoreticScan> theoreticScans,
             Iterator<ExperimentalScan> experimentalScans,
             double accuracy,
-            double step) {
+            double step,
+            double maxEValue) {
         final double EPS = 1e-9;
         TreeMap<Double, Double> diffs = getPeakMatchesStream(
-                theoreticScans, experimentalScans, accuracy)
+                theoreticScans, experimentalScans, accuracy, maxEValue)
                 .collect(Collectors.groupingBy(
                         match -> round(match.getTheoreticMass(), step),
                         TreeMap::new,
                         Collectors.averagingDouble(PeakMatch::getDiff)
+                ));
+        long least = (long)Math.floor(diffs.firstKey() / step + EPS);
+        long biggest = (long)Math.floor(diffs.lastKey() / step + EPS);
+        for (long i = least; i < biggest; i++) {
+            diffs.putIfAbsent(i * step, 0.0);
+        }
+        return diffs;
+    }
+
+    public static TreeMap<Double, Double> matchRelDiffsByMass(
+            Stream <TheoreticScan> theoreticScans,
+            Iterator<ExperimentalScan> experimentalScans,
+            double accuracy,
+            double step,
+            double maxEValue) {
+        final double EPS = 1e-9;
+        TreeMap<Double, Double> diffs = getPeakMatchesStream(
+                theoreticScans, experimentalScans, accuracy, maxEValue)
+                .collect(Collectors.groupingBy(
+                        match -> round(match.getTheoreticMass(), step),
+                        TreeMap::new,
+                        Collectors.averagingDouble(point ->
+                                point.getDiff() /
+                                        (point.theoreticMass * 1e-6))
                 ));
         long least = (long)Math.floor(diffs.firstKey() / step + EPS);
         long biggest = (long)Math.floor(diffs.lastKey() / step + EPS);

@@ -311,7 +311,7 @@ public class Main {
         listCoincidences {
             @Override
             protected void exec(String[] args) {
-                if (args.length != 5) {
+                if (args.length != 6) {
                     help.exec(args);
                     return;
                 }
@@ -321,11 +321,13 @@ public class Main {
                         DeconvolutionProgram.valueOf(args[2]);
                 Path outputPath = Paths.get(args[3]);
                 double accuracy = Double.valueOf(args[4]);
+                double maxEValue = Double.valueOf(args[5]);
                 try {
                     Analyzer.getPeakMatchesStream(
                             TheoreticScan.readTable(tablePath),
                             program.getOutputIterator(outputPath),
-                            accuracy)
+                            accuracy,
+                            maxEValue)
                             .forEach(match -> System.out.println(
                                     match.getTheoreticMass() + " " +
                                             match.getExperimentalMass() +
@@ -338,16 +340,16 @@ public class Main {
             @Override
             protected String getDescription() {
                 return name() + "<table path> <program name> " +
-                        "<output filepath> <accuracy> - to list all " +
-                        "the coincidences between theoretic and " +
-                        "experimental ions.";
+                        "<output filepath> <accuracy> <maxEValue> " +
+                        "- to list all the coincidences between " +
+                        "theoretic and experimental ions.";
             }
         },
 
         matchDiffDistribution {
             @Override
             protected void exec(String[] args) {
-                if (args.length != 6) {
+                if (args.length != 7) {
                     help.exec(args);
                     return;
                 }
@@ -358,12 +360,14 @@ public class Main {
                 Path outputPath = Paths.get(args[3]);
                 double accuracy = Double.valueOf(args[4]);
                 double step = Double.valueOf(args[5]);
+                double maxEValue = Double.valueOf(args[6]);
                 try {
                     Analyzer.matchDiffsDistribution(
                             TheoreticScan.readTable(tablePath),
                             program.getOutputIterator(outputPath),
                             accuracy,
-                            step).forEach((diff, count) ->
+                            step,
+                            maxEValue).forEach((diff, count) ->
                             System.out.printf("%f %f\t%d\n",
                                     diff,  diff + step , count));
                 } catch (IOException e) {
@@ -375,15 +379,16 @@ public class Main {
             protected String getDescription() {
                 return name() + "<table path> <program name> " +
                         "<output filepath> <accuracy> <distribution" +
-                        " step> - to get a distribution of differences" +
-                        "between theoretic and experimental peaks.";
+                        " step> <max eValue> - to get a distribution " +
+                        "of differences between theoretic and " +
+                        "experimental peaks.";
             }
         },
 
         matchDiffByMass {
             @Override
             protected void exec(String[] args) {
-                if (args.length != 6) {
+                if (args.length != 7) {
                     help.exec(args);
                     return;
                 }
@@ -394,12 +399,14 @@ public class Main {
                 Path outputPath = Paths.get(args[3]);
                 double accuracy = Double.valueOf(args[4]);
                 double step = Double.valueOf(args[5]);
+                double maxEValue = Double.valueOf(args[6]);
                 try {
                     Analyzer.matchDiffsByMass(
                             TheoreticScan.readTable(tablePath),
                             program.getOutputIterator(outputPath),
                             accuracy,
-                            step).forEach((mass, count) ->
+                            step,
+                            maxEValue).forEach((mass, count) ->
                             System.out.printf("%f %f\t%f\n",
                                     mass,  mass + step , count));
                 } catch (IOException e) {
@@ -411,8 +418,49 @@ public class Main {
             protected String getDescription() {
                 return name() + "<table path> <program name> " +
                         "<output filepath> <accuracy> <distribution " +
-                        "step> - to get average differences between" +
-                        " theoretic and experimental peaks.";
+                        "step> <max eValue> - to get average " +
+                        "differences between theoretic and " +
+                        "experimental peaks.";
+            }
+        },
+
+        matchRelativeDiffByMass {
+            @Override
+            protected void exec(String[] args) {
+                if (args.length != 7) {
+                    help.exec(args);
+                    return;
+                }
+
+                Path tablePath = Paths.get(args[1]);
+                DeconvolutionProgram program =
+                        DeconvolutionProgram.valueOf(args[2]);
+                Path outputPath = Paths.get(args[3]);
+                double accuracy = Double.valueOf(args[4]);
+                double step = Double.valueOf(args[5]);
+                double maxEValue = Double.valueOf(args[6]);
+                try {
+                    Analyzer.matchRelDiffsByMass(
+                            TheoreticScan.readTable(tablePath),
+                            program.getOutputIterator(outputPath),
+                            accuracy,
+                            step,
+                            maxEValue).forEach((mass, count) ->
+                            System.out.printf("%f %f\t%f\n",
+                                    mass,  mass + step , count));
+                } catch (IOException e) {
+                    System.out.println("Error reading table.");
+                }
+            }
+
+            @Override
+            protected String getDescription() {
+                return name() + "<table path> <program name> " +
+                        "<output filepath> <accuracy> <distribution " +
+                        "step> <max eValue> - to get average " +
+                        "differences between theoretic and " +
+                        "experimental peaks as theoretic mass " +
+                        "shares.";
             }
         },
 
